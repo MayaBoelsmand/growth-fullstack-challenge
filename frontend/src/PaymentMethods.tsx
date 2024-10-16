@@ -133,6 +133,7 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
     if (newMethod.trim()) {
       addPaymentMethod({
         variables: { parentId, method: newMethod.trim() },
+        refetchQueries: [{ query: GET_PAYMENT_METHODS, variables: { parentId } }],
       }).then(() => {
         setNewMethod("");
       });
@@ -142,6 +143,7 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
   const handleDeleteMethod = (method: string) => {
     deletePaymentMethod({
       variables: { parentId, method },
+      refetchQueries: [{ query: GET_PAYMENT_METHODS, variables: { parentId } }],
     });
   };
 
