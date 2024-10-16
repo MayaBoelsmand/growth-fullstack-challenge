@@ -1,6 +1,6 @@
 import { GraphQLLong } from "graphql-scalars";
 import { ProfileRepository } from "../repository/profileRepository";
-import { ParentProfileBackend } from "../parentProfileBackend";
+import { ParentProfileBackend, PaymentMethod } from "../parentProfileBackend";
 import sqlFormattedDate from "../utils/dates/SQLFormattedDate";
 
 const profileRepository = new ProfileRepository();
@@ -9,46 +9,124 @@ export const resolvers = {
   Long: GraphQLLong,
   Query: {
     parentProfile: async (_: any, { parentId }: { parentId: number }) => {
-      return new ParentProfileBackend(await profileRepository.retrieveParentProfiles(parentId), [], []).parentProfile(parentId);
+      return new ParentProfileBackend(
+        await profileRepository.retrieveParentProfiles(parentId),
+        [],
+        []
+      ).parentProfile(parentId);
     },
     paymentMethods: async (_: any, { parentId }: { parentId: number }) => {
-      return new ParentProfileBackend([], [], await profileRepository.retrievePaymentMethods(parentId)).paymentMethods(parentId);
+      return new ParentProfileBackend(
+        [],
+        [],
+        await profileRepository.retrieveCurrentPaymentMethods(parentId)
+      ).paymentMethods(parentId);
     },
     invoices: async (_: any, { parentId }: { parentId: number }) => {
-      return new ParentProfileBackend([], await profileRepository.retrieveInvoices(parentId), []).invoices(parentId);
+      return new ParentProfileBackend(
+        [],
+        await profileRepository.retrieveInvoices(parentId),
+        []
+      ).invoices(parentId);
     },
   },
   Mutation: {
     addPaymentMethod: async (
       _: any,
-      { parentId, method }: { parentId: number; method: string },
+      { parentId, method }: { parentId: number; method: string }
     ) => {
       const createdAt = sqlFormattedDate(new Date());
-      const paymentMethod = await profileRepository.createPaymentMethod({ id: 0, parentId, method, isActive: false, createdAt: createdAt });
-      return new ParentProfileBackend([], [], [paymentMethod]).paymentMethod(paymentMethod.id);
+
+      const paymentMethodInput: PaymentMethod = {
+        objectId: 0,
+        versionId: generateNewVersionId(),
+        parentId,
+        method,
+        isActive: false,
+        createdAt: createdAt,
+        createdBy: parentId,
+        auditStatus: "current",
+        deletedAt: null,
+      };
+
+      const paymentMethod = await profileRepository.insertPaymentMethodVersion(
+        paymentMethodInput
+      );
+      return new ParentProfileBackend([], [], [paymentMethod]).paymentMethod(
+        paymentMethod.objectId
+      );
     },
     setActivePaymentMethod: async (
       _: any,
-      { parentId, methodId }: { parentId: number; methodId: number },
+      { parentId, methodId }: { parentId: number; methodId: number }
     ) => {
-      const parentProfileBackend = new ParentProfileBackend([], [], await profileRepository.retrievePaymentMethods(parentId)).setActivePaymentMethod(parentId, methodId);
+      const currentPaymentMethods =
+        await profileRepository.retrieveCurrentPaymentMethods(parentId);
 
-      await profileRepository.updatePaymentMethods(parentProfileBackend.paymentMethods(parentId))
+      const currentActiveMethod = currentPaymentMethods.find(
+        (method) => method.isActive
+      );
 
-      return parentProfileBackend.paymentMethod(methodId);
+      if (currentActiveMethod) {
+        await archiveAndInsertUpdatedVersion(currentActiveMethod, false, false);
+      }
+
+      const targetMethod = currentPaymentMethods.find(
+        (method) => method.objectId === methodId
+      );
+
+      if (!targetMethod) {
+        throw new Error("Target payment method not found.");
+      }
+
+      await archiveAndInsertUpdatedVersion(targetMethod, false, true);
+
+      return targetMethod;
     },
     deletePaymentMethod: async (
       _: any,
-      { parentId, methodId }: { parentId: number; methodId: number },
+      { parentId, methodId }: { parentId: number; methodId: number }
     ) => {
-      const initialParentProfileBackend = new ParentProfileBackend([], [], await profileRepository.retrievePaymentMethods(parentId));
-      const parentProfileBackend = initialParentProfileBackend.deletePaymentMethod(parentId, methodId);
+      const currentMethods =
+        await profileRepository.retrieveCurrentPaymentMethods(parentId);
 
-      await Promise.all(initialParentProfileBackend.paymentMethods(parentId)
-        .filter(paymentMethod => !parentProfileBackend.paymentMethods(parentId).includes(paymentMethod))
-        .map(paymentMethod => profileRepository.deletePaymentMethod(paymentMethod.id)))
+      const targetMethod = currentMethods.find(
+        (method) => method.objectId === methodId
+      );
+
+      if (!targetMethod) {
+        throw new Error("Payment method not found.");
+      }
+
+      await archiveAndInsertUpdatedVersion(targetMethod, true);
 
       return true;
     },
   },
 };
+
+// MARK: - Helper functions
+async function archiveAndInsertUpdatedVersion(
+  paymentMethod: PaymentMethod,
+  shouldBeDeleted: boolean,
+  isActive?: boolean
+) {
+  const now = sqlFormattedDate(new Date());
+
+  await profileRepository.archivePaymentMethodVersion(paymentMethod.objectId);
+
+  const updatedPaymentMethod: PaymentMethod = {
+    ...paymentMethod,
+    versionId: generateNewVersionId(),
+    isActive: isActive ?? paymentMethod.isActive,
+    createdAt: now,
+    auditStatus: "current",
+    deletedAt: shouldBeDeleted ? now : null,
+  };
+
+  await profileRepository.insertPaymentMethodVersion(updatedPaymentMethod);
+}
+
+function generateNewVersionId() {
+  return Math.floor(Math.random() * 1000000000);
+}

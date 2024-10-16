@@ -3,28 +3,58 @@ import mysql from "mysql2/promise";
 import { Invoice, ParentProfile, PaymentMethod } from "../parentProfileBackend";
 
 export class ProfileRepository {
-  async createPaymentMethod(paymentMethod: PaymentMethod): Promise<PaymentMethod> {
-    const sql = "INSERT INTO payment_methods (parent_id, method, is_active, created_at) VALUES (?, ?, ?, ?)";
+  async insertPaymentMethodVersion(
+    paymentMethod: PaymentMethod
+  ): Promise<PaymentMethod> {
+    const sql = `
+    INSERT INTO payment_methods (object_id, parent_id, method, is_active, created_at, version_id, audit_status, created_by, deleted_at)
+    VALUES (?, ?, ?, ?, ?, ?, "current", ?, ?)
+  `;
+
     const [result] = await db.execute<mysql.ResultSetHeader>(sql, [
+      paymentMethod.objectId,
       paymentMethod.parentId,
       paymentMethod.method,
       paymentMethod.isActive,
-      paymentMethod.createdAt
+      paymentMethod.createdAt,
+      paymentMethod.versionId,
+      paymentMethod.createdBy,
+      paymentMethod.deletedAt
     ]);
+
     const insertId = result.insertId;
-    return { ...paymentMethod, id: insertId };
+    return { ...paymentMethod, objectId: insertId };
   }
 
-  async retrievePaymentMethods(parentId: number): Promise<PaymentMethod[]> {
-    var options = { year: 'numeric', month: 'long', day: 'numeric' };
-    const sql = "SELECT * FROM payment_methods WHERE parent_id = ?";
+  async archivePaymentMethodVersion(objectId: number): Promise<void> {
+    const archiveSql = `
+      UPDATE payment_methods
+      SET audit_status = 'archived'
+      WHERE object_id = ? AND audit_status = 'current';
+    `;
+    await db.execute<mysql.ResultSetHeader>(archiveSql, [objectId]);
+  }
+
+  async retrieveCurrentPaymentMethods(
+    parentId: number
+  ): Promise<PaymentMethod[]> {
+    var options = { year: "numeric", month: "long", day: "numeric" };
+
+    const sql = `
+    SELECT * FROM payment_methods 
+    WHERE parent_id = ? AND audit_status = 'current' AND deleted_at IS NULL
+  `;
     const results = await query(sql, [parentId]);
     return results.map((r) => ({
-      id: r.id,
+      objectId: r.object_id,
+      versionId: r.version_id,
       parentId: r.parent_id,
       method: r.method,
       isActive: r.is_active,
-      createdAt: r.created_at.toLocaleString("en-US", options)
+      createdAt: r.created_at.toLocaleString("en-US", options),
+      createdBy: r.created_by,
+      auditStatus: r.audit_status,
+      deletedAt: r.deleted_at,
     }));
   }
 
@@ -47,25 +77,5 @@ export class ProfileRepository {
       name: r.name,
       child: r.child,
     }));
-  }
-
-  async updatePaymentMethods(updatedPaymentMethods: PaymentMethod[]): Promise<number[]> {
-    const updatePromises = updatedPaymentMethods.map((paymentMethod) => {
-      const sql = "UPDATE payment_methods SET parent_id = ?, method = ?, is_active = ? WHERE id = ?";
-      return db.execute<mysql.ResultSetHeader>(sql, [
-        paymentMethod.parentId,
-        paymentMethod.method,
-        paymentMethod.isActive,
-        paymentMethod.id,
-      ]);
-    });
-    const results = await Promise.all(updatePromises);
-    return results.map(([result]) => result.affectedRows);
-  }
-
-  async deletePaymentMethod(methodId: number): Promise<boolean> {
-    const sql = "DELETE FROM payment_methods WHERE id = ?";
-    const [result] = await db.execute<mysql.ResultSetHeader>(sql, [methodId]);
-    return result.affectedRows > 0;
   }
 }
