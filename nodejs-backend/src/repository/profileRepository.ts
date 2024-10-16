@@ -4,17 +4,19 @@ import { Invoice, ParentProfile, PaymentMethod } from "../parentProfileBackend";
 
 export class ProfileRepository {
   async createPaymentMethod(paymentMethod: PaymentMethod): Promise<PaymentMethod> {
-    const sql = "INSERT INTO payment_methods (parent_id, method, is_active) VALUES (?, ?, ?)";
+    const sql = "INSERT INTO payment_methods (parent_id, method, is_active, created_at) VALUES (?, ?, ?, ?)";
     const [result] = await db.execute<mysql.ResultSetHeader>(sql, [
       paymentMethod.parentId,
       paymentMethod.method,
       paymentMethod.isActive,
+      paymentMethod.createdAt
     ]);
     const insertId = result.insertId;
     return { ...paymentMethod, id: insertId };
   }
 
   async retrievePaymentMethods(parentId: number): Promise<PaymentMethod[]> {
+    var options = { year: 'numeric', month: 'long', day: 'numeric' };
     const sql = "SELECT * FROM payment_methods WHERE parent_id = ?";
     const results = await query(sql, [parentId]);
     return results.map((r) => ({
@@ -22,6 +24,7 @@ export class ProfileRepository {
       parentId: r.parent_id,
       method: r.method,
       isActive: r.is_active,
+      createdAt: r.created_at.toLocaleString("en-US", options)
     }));
   }
 

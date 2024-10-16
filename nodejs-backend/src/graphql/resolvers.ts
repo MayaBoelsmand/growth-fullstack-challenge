@@ -1,6 +1,7 @@
 import { GraphQLLong } from "graphql-scalars";
 import { ProfileRepository } from "../repository/profileRepository";
 import { ParentProfileBackend } from "../parentProfileBackend";
+import sqlFormattedDate from "../utils/dates/SQLFormattedDate";
 
 const profileRepository = new ProfileRepository();
 
@@ -22,7 +23,8 @@ export const resolvers = {
       _: any,
       { parentId, method }: { parentId: number; method: string },
     ) => {
-      const paymentMethod = await profileRepository.createPaymentMethod({ id: 0, parentId, method, isActive: false });
+      const createdAt = sqlFormattedDate(new Date());
+      const paymentMethod = await profileRepository.createPaymentMethod({ id: 0, parentId, method, isActive: false, createdAt: createdAt });
       return new ParentProfileBackend([], [], [paymentMethod]).paymentMethod(paymentMethod.id);
     },
     setActivePaymentMethod: async (

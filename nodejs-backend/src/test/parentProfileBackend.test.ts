@@ -1,4 +1,5 @@
 import { ParentProfileBackend } from "../parentProfileBackend";
+import sqlFormattedDate from "../utils/dates/SQLFormattedDate";
 
 describe("Parent profile backend", () => {
   const parentProfileBackend = new ParentProfileBackend([], [], [])
@@ -55,48 +56,53 @@ describe("Parent profile backend", () => {
     });
 
     it("When the first payment method is created, it should be there with the id of 1, because the id's are incremented every time a payment method is created", () => {
+      const createdAt =  sqlFormattedDate(new Date());
       expect(parentProfileBackend
         .createParentProfile("Alice", "Bob")
-        .createPaymentMethod(1, "Credit Card", true)
+        .createPaymentMethod(1, "Credit Card", true, createdAt)
         .paymentMethods(1))
-      .toContainEqual({ id: 1, parentId: 1, method: "Credit Card", isActive: true })
+      .toContainEqual({ id: 1, parentId: 1, method: "Credit Card", isActive: true, createdAt: createdAt })
     });
 
     it("When a payment method is created, and there is a payment method already, the new one should have an id of 2", () => {
+      const createdAt =  sqlFormattedDate(new Date());
       expect(parentProfileBackend
         .createParentProfile("Alice", "Bob")
-        .createPaymentMethod(1, "Credit Card", false)
-        .createPaymentMethod(1, "Debit Card", true)
+        .createPaymentMethod(1, "Credit Card", false, createdAt)
+        .createPaymentMethod(1, "Debit Card", true, createdAt)
         .paymentMethods(1))
-      .toContainEqual({ id: 2, parentId: 1, method: "Debit Card", isActive: true })
+      .toContainEqual({ id: 2, parentId: 1, method: "Debit Card", isActive: true, createdAt: createdAt })
     });
 
     it("When a payment method is deleted it should go away, because we don't want to keep payment methods around due to privacy concerns", () => {
+      const createdAt =  sqlFormattedDate(new Date());
       expect(parentProfileBackend
         .createParentProfile("Alice", "Bob")
-        .createPaymentMethod(1, "Credit Card", true)
+        .createPaymentMethod(1, "Credit Card", true, createdAt)
         .deletePaymentMethod(1, 1)
         .paymentMethods(1))
-      .not.toContainEqual({ id: 1, parentId: 1, method: "Credit Card", isActive: true })
+      .not.toContainEqual({ id: 1, parentId: 1, method: "Credit Card", isActive: true, createdAt: createdAt })
     });
 
     it("When setting a payment method active, it should deactivate the current active one and activate the new one, so that we don't have multiple active payment methods", () => {
+      const createdAt =  sqlFormattedDate(new Date());
       expect(parentProfileBackend
         .createParentProfile("Alice", "Bob")
-        .createPaymentMethod(1, "Credit Card", false)
-        .createPaymentMethod(1, "Debit Card", true)
+        .createPaymentMethod(1, "Credit Card", false, createdAt)
+        .createPaymentMethod(1, "Debit Card", true, createdAt)
         .setActivePaymentMethod(1, 1)
         .paymentMethods(1))
-      .toContainEqual({ id: 1, parentId: 1, method: "Credit Card", isActive: true })
+      .toContainEqual({ id: 1, parentId: 1, method: "Credit Card", isActive: true, createdAt: createdAt })
     });
 
     it("When a payment method is added, we should be able to get it by id, so what we can show the newly added payment method", () => {
+      const createdAt =  sqlFormattedDate(new Date());
       expect(parentProfileBackend
         .createParentProfile("Alice", "Bob")
         .createParentProfile("Charlie", "David")
-        .createPaymentMethod(2, "Credit Card", true)
+        .createPaymentMethod(2, "Credit Card", true,createdAt)
         .paymentMethod(1))
-      .toEqual({ id: 1, parentId: 2, method: "Credit Card", isActive: true })
+      .toEqual({ id: 1, parentId: 2, method: "Credit Card", isActive: true, createdAt: createdAt })
     });
   });
 });
