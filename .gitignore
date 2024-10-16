@@ -72,6 +72,7 @@ backend/project/target/
 # Dependency directories
 project/project/
 project/target/
+node_modules/
 
 # Scala 3 specific
 .tasty
