@@ -10,11 +10,15 @@ export const typeDefs = gql`
   }
 
   type PaymentMethod {
-    id: Long!
+    objectId: Long!
+    versionId: Long!
     parentId: Int!
     method: String!
     isActive: Boolean!
     createdAt: String!
+    createdBy: Int!
+    deletedAt: String
+    auditStatus: String!
   }
 
   type Invoice {

@@ -5,11 +5,15 @@ export interface ParentProfile {
 }
   
 export interface PaymentMethod {
-    id: number;
-    parentId: number;
-    method: string;
-    isActive: boolean;
-    createdAt: string
+  objectId: number;
+  versionId: number;
+  parentId: number;
+  method: string;
+  isActive: boolean;
+  createdAt: string;
+  createdBy: number;
+  deletedAt?: string | null;
+  auditStatus: "current" | "archived";
 }
   
 export  interface Invoice {
