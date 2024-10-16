@@ -27,6 +27,7 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   listItem: {
     display: "flex",
+    flexDirection: "column",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "white",
@@ -34,6 +35,13 @@ const useStyles = makeStyles((theme: Theme) => ({
     margin: "12px 0",
     padding: "16px",
     boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+  },
+  listItemTopStack: {
+    display: "flex",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%"
   },
   icon: {
     marginRight: "20px",
@@ -49,6 +57,13 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
   inactiveText: {
     color: theme.palette.error.main,
+  },
+  descriptionText: {
+    color: theme.palette.text.secondary,
+    fontSize: "10px",
+    fontStyle: "italic",
+    width: "100%",
+    marginTop: "8px",
   },
   button: {
     backgroundColor: theme.palette.action.hover,
@@ -80,6 +95,7 @@ export const GET_PAYMENT_METHODS = gql`
       id
       method
       isActive
+      createdAt
     }
   }
 `;
@@ -90,6 +106,7 @@ export const SET_ACTIVE_PAYMENT_METHOD = gql`
       id
       method
       isActive
+      createdAt
     }
   }
 `;
@@ -100,6 +117,7 @@ const ADD_PAYMENT_METHOD = gql`
       id
       method
       isActive
+      createdAt
     }
   }
 `;
@@ -125,6 +143,9 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
   const handleActivate = (methodId: number) => {
     setActivePaymentMethod({
       variables: { parentId, methodId },
+      refetchQueries: [
+        { query: GET_PAYMENT_METHODS, variables: { parentId } },
+      ],
     });
   };
 
@@ -133,7 +154,9 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
     if (newMethod.trim()) {
       addPaymentMethod({
         variables: { parentId, method: newMethod.trim() },
-        refetchQueries: [{ query: GET_PAYMENT_METHODS, variables: { parentId } }],
+        refetchQueries: [
+          { query: GET_PAYMENT_METHODS, variables: { parentId } },
+        ],
       }).then(() => {
         setNewMethod("");
       });
@@ -141,11 +164,14 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
   };
 
   const handleDeleteMethod = (methodId: number) => {
-
-    const activeMethods = data?.paymentMethods.filter((method: any) => method.isActive);
+    const activeMethods = data?.paymentMethods.filter(
+      (method: any) => method.isActive
+    );
 
     if (activeMethods.length === 1 && activeMethods[0].id === methodId) {
-      alert("You cannot delete the only active payment method. Please activate or add another method first.");
+      alert(
+        "You cannot delete the only active payment method. Please activate or add another method first."
+      );
       return;
     }
 
@@ -185,37 +211,46 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
       </form>
       <List>
         {data?.paymentMethods.map((method: any) => (
-          <ListItem key={method.id} className={classes.listItem}>
-            <ListItemIcon>
-              <CreditCardIcon />
-            </ListItemIcon>
-            <ListItemText
-              primary={method.method}
-              secondary={method.isActive ? "Active" : "Inactive"}
-              primaryTypographyProps={{ className: classes.primaryText }}
-              secondaryTypographyProps={{
-                className: method.isActive
-                  ? classes.activeText
-                  : classes.inactiveText,
-              }}
-            />
-            {!method.isActive && (
-              <Button
-                variant="contained"
-                className={classes.button}
-                onClick={() => handleActivate(method.id)}
+          <ListItem
+            key={method.id}
+            className={classes.listItem}
+          >
+            <div className={classes.listItemTopStack}>
+              <ListItemIcon>
+                <CreditCardIcon />
+              </ListItemIcon>
+              <ListItemText
+                primary={method.method}
+                secondary={method.isActive ? "Active" : "Inactive"}
+                primaryTypographyProps={{ className: classes.primaryText }}
+                secondaryTypographyProps={{
+                  className: method.isActive
+                    ? classes.activeText
+                    : classes.inactiveText,
+                }}
+              />
+
+              {!method.isActive && (
+                <Button
+                  variant="contained"
+                  className={classes.button}
+                  onClick={() => handleActivate(method.id)}
+                  size="small"
+                >
+                  Activate
+                </Button>
+              )}
+              <IconButton
+                className={classes.deleteButton}
+                onClick={() => handleDeleteMethod(method.id)}
                 size="small"
               >
-                Activate
-              </Button>
-            )}
-            <IconButton
-              className={classes.deleteButton}
-              onClick={() => handleDeleteMethod(method.id)}
-              size="small"
-            >
-              <DeleteIcon />
-            </IconButton>
+                <DeleteIcon />
+              </IconButton>
+            </div>
+            <Typography className={classes.descriptionText}>
+              Added: {method.createdAt}
+            </Typography>
           </ListItem>
         ))}
       </List>
