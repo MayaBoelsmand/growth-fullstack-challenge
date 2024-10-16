@@ -141,6 +141,14 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
   };
 
   const handleDeleteMethod = (methodId: number) => {
+
+    const activeMethods = data?.paymentMethods.filter((method: any) => method.isActive);
+
+    if (activeMethods.length === 1 && activeMethods[0].id === methodId) {
+      alert("You cannot delete the only active payment method. Please activate or add another method first.");
+      return;
+    }
+
     deletePaymentMethod({
       variables: { parentId, methodId },
       refetchQueries: [{ query: GET_PAYMENT_METHODS, variables: { parentId } }],
