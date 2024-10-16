@@ -1,3 +1,5 @@
+import sqlFormattedDate from "./utils/dates/SQLFormattedDate";
+
 export interface ParentProfile {
     id: number;
     name: string;
@@ -55,18 +57,58 @@ export class ParentProfileBackend {
     }
 
     paymentMethod(paymentMethodId: number) {
-        return this.allPaymentMethods.find(paymentMethod => paymentMethod.id === paymentMethodId);
+        return this.allPaymentMethods.find(paymentMethod => paymentMethod.objectId === paymentMethodId);
     }
 
-    createPaymentMethod(parentId: number, method: string, isActive: boolean, createdAt: string) {
-        return new ParentProfileBackend(this.allParentProfiles, this.allInvoices, [...this.allPaymentMethods, { id: this.allPaymentMethods.length + 1, parentId, method, isActive, createdAt }]);
-    }
+    createPaymentMethod(
+        parentId: number,
+        method: string,
+        isActive: boolean,
+        createdAt: string,
+        versionId: number
+      ) {
+        const paymentMethod: PaymentMethod = {
+          objectId: this.allPaymentMethods.length + 1,
+          versionId,
+          parentId,
+          method,
+          isActive,
+          createdAt,
+          createdBy: parentId,
+          auditStatus: "current",
+          deletedAt: null,
+        };
+      
+        return new ParentProfileBackend(
+          this.allParentProfiles,
+          this.allInvoices,
+          [...this.allPaymentMethods, paymentMethod]
+        );
+      }
 
-    deletePaymentMethod(parentId: number, paymentMethodId: number) {
-        return new ParentProfileBackend(this.allParentProfiles, this.allInvoices, this.allPaymentMethods.filter(paymentMethod => !(paymentMethod.parentId === parentId && paymentMethod.id === paymentMethodId)));
-    }
+      deletePaymentMethod(parentId: number, paymentMethodId: number) {
+        return new ParentProfileBackend(
+          this.allParentProfiles,
+          this.allInvoices,
+          this.allPaymentMethods.map((paymentMethod) => {
+            if (
+              paymentMethod.parentId === parentId &&
+              paymentMethod.objectId === paymentMethodId &&
+              paymentMethod.auditStatus === "current"
+            ) {
+              return {
+                ...paymentMethod,
+                auditStatus: "current",
+                deletedAt: sqlFormattedDate(new Date()), 
+              };
+            }
+            return paymentMethod;
+          })
+        );
+      }
+      
 
-    setActivePaymentMethod(parentId: number, paymentMethodId: number) {
-        return new ParentProfileBackend(this.allParentProfiles, this.allInvoices, this.allPaymentMethods.map(paymentMethod => ({...paymentMethod, isActive: (paymentMethod.parentId === parentId && paymentMethod.id === paymentMethodId) }) ));
+    setActivePaymentMethod(parentId: number, paymentMethodId: number, versionId: number) {
+        return new ParentProfileBackend(this.allParentProfiles, this.allInvoices, this.allPaymentMethods.map(paymentMethod => ({...paymentMethod, isActive: (paymentMethod.parentId === parentId && paymentMethod.objectId === paymentMethodId), versionId: versionId }) ));
     }
 }

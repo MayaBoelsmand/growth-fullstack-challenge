@@ -41,7 +41,7 @@ const useStyles = makeStyles((theme: Theme) => ({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    width: "100%"
+    width: "100%",
   },
   icon: {
     marginRight: "20px",
@@ -92,7 +92,7 @@ const useStyles = makeStyles((theme: Theme) => ({
 export const GET_PAYMENT_METHODS = gql`
   query GetPaymentMethods($parentId: Long!) {
     paymentMethods(parentId: $parentId) {
-      id
+      objectId
       method
       isActive
       createdAt
@@ -103,10 +103,7 @@ export const GET_PAYMENT_METHODS = gql`
 export const SET_ACTIVE_PAYMENT_METHOD = gql`
   mutation SetActivePaymentMethod($parentId: Long!, $methodId: Long!) {
     setActivePaymentMethod(parentId: $parentId, methodId: $methodId) {
-      id
-      method
-      isActive
-      createdAt
+      objectId
     }
   }
 `;
@@ -114,10 +111,7 @@ export const SET_ACTIVE_PAYMENT_METHOD = gql`
 const ADD_PAYMENT_METHOD = gql`
   mutation AddPaymentMethod($parentId: Long!, $method: String!) {
     addPaymentMethod(parentId: $parentId, method: $method) {
-      id
-      method
-      isActive
-      createdAt
+      objectId
     }
   }
 `;
@@ -143,9 +137,7 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
   const handleActivate = (methodId: number) => {
     setActivePaymentMethod({
       variables: { parentId, methodId },
-      refetchQueries: [
-        { query: GET_PAYMENT_METHODS, variables: { parentId } },
-      ],
+      refetchQueries: [{ query: GET_PAYMENT_METHODS, variables: { parentId } }],
     });
   };
 
@@ -168,7 +160,7 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
       (method: any) => method.isActive
     );
 
-    if (activeMethods.length === 1 && activeMethods[0].id === methodId) {
+    if (activeMethods.length === 1 && activeMethods[0].objectId === methodId) {
       alert(
         "You cannot delete the only active payment method. Please activate or add another method first."
       );
@@ -211,10 +203,7 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
       </form>
       <List>
         {data?.paymentMethods.map((method: any) => (
-          <ListItem
-            key={method.id}
-            className={classes.listItem}
-          >
+          <ListItem key={method.objectId} className={classes.listItem}>
             <div className={classes.listItemTopStack}>
               <ListItemIcon>
                 <CreditCardIcon />
@@ -234,7 +223,7 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
                 <Button
                   variant="contained"
                   className={classes.button}
-                  onClick={() => handleActivate(method.id)}
+                  onClick={() => handleActivate(method.objectId)}
                   size="small"
                 >
                   Activate
@@ -242,7 +231,7 @@ const PaymentMethods = ({ parentId }: { parentId: number }) => {
               )}
               <IconButton
                 className={classes.deleteButton}
-                onClick={() => handleDeleteMethod(method.id)}
+                onClick={() => handleDeleteMethod(method.objectId)}
                 size="small"
               >
                 <DeleteIcon />

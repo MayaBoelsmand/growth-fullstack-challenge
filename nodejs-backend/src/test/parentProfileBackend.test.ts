@@ -55,54 +55,122 @@ describe("Parent profile backend", () => {
       expect(parentProfileBackend.paymentMethods(1)).toEqual([])
     });
 
-    it("When the first payment method is created, it should be there with the id of 1, because the id's are incremented every time a payment method is created", () => {
+    it("When the first payment method is created, it should be there with the objectId of 1, because the objectIds are incremented every time a payment method is created", () => {
       const createdAt =  sqlFormattedDate(new Date());
-      expect(parentProfileBackend
-        .createParentProfile("Alice", "Bob")
-        .createPaymentMethod(1, "Credit Card", true, createdAt)
-        .paymentMethods(1))
-      .toContainEqual({ id: 1, parentId: 1, method: "Credit Card", isActive: true, createdAt: createdAt })
+      const versionId = Math.floor(Math.random() * 1000000000);
+  
+      expect(
+        parentProfileBackend
+          .createParentProfile("Alice", "Bob")
+          .createPaymentMethod(1, "Credit Card", true, createdAt, versionId)
+          .paymentMethods(1)
+      ).toContainEqual({
+        objectId: 1,
+        parentId: 1,
+        method: "Credit Card",
+        isActive: true,
+        createdAt: createdAt,
+        auditStatus: "current",
+        versionId: versionId,
+        createdBy: 1,
+        deletedAt: null,
+      });
     });
 
-    it("When a payment method is created, and there is a payment method already, the new one should have an id of 2", () => {
-      const createdAt =  sqlFormattedDate(new Date());
-      expect(parentProfileBackend
-        .createParentProfile("Alice", "Bob")
-        .createPaymentMethod(1, "Credit Card", false, createdAt)
-        .createPaymentMethod(1, "Debit Card", true, createdAt)
-        .paymentMethods(1))
-      .toContainEqual({ id: 2, parentId: 1, method: "Debit Card", isActive: true, createdAt: createdAt })
+
+    it("When a payment method is created, and there is already one, the new one should have an objectId of 2", () => {
+      const createdAt = sqlFormattedDate(new Date());
+      const versionIdOne = Math.floor(Math.random() * 1000000000);
+      const versionIdTwo = Math.floor(Math.random() * 1000000000);
+  
+      expect(
+        parentProfileBackend
+          .createParentProfile("Alice", "Bob")
+          .createPaymentMethod(1, "Credit Card", false, createdAt, versionIdOne)
+          .createPaymentMethod(1, "Debit Card", true, createdAt, versionIdTwo)
+          .paymentMethods(1)
+      ).toContainEqual({
+        objectId: 2,
+        parentId: 1,
+        method: "Debit Card",
+        isActive: true,
+        createdAt: createdAt,
+        auditStatus: "current",
+        versionId: versionIdTwo,
+        createdBy: 1,
+        deletedAt: null,
+      });
     });
 
-    it("When a payment method is deleted it should go away, because we don't want to keep payment methods around due to privacy concerns", () => {
-      const createdAt =  sqlFormattedDate(new Date());
-      expect(parentProfileBackend
-        .createParentProfile("Alice", "Bob")
-        .createPaymentMethod(1, "Credit Card", true, createdAt)
-        .deletePaymentMethod(1, 1)
-        .paymentMethods(1))
-      .not.toContainEqual({ id: 1, parentId: 1, method: "Credit Card", isActive: true, createdAt: createdAt })
+    it("When a payment method is deleted, it should be archived (soft deleted), not permanently removed", () => {
+      const createdAt = sqlFormattedDate(new Date());
+      const versionId = Math.floor(Math.random() * 1000000000);
+  
+      expect(
+        parentProfileBackend
+          .createParentProfile("Alice", "Bob")
+          .createPaymentMethod(1, "Credit Card", true, createdAt, versionId)
+          .deletePaymentMethod(1, 1)
+          .paymentMethods(1)
+      ).toContainEqual({
+        objectId: 1,
+        parentId: 1,
+        method: "Credit Card",
+        isActive: true,
+        createdAt: createdAt,
+        auditStatus: "current",  
+        versionId: versionId,
+        createdBy: 1,
+        deletedAt: createdAt, 
+      });
     });
 
-    it("When setting a payment method active, it should deactivate the current active one and activate the new one, so that we don't have multiple active payment methods", () => {
-      const createdAt =  sqlFormattedDate(new Date());
-      expect(parentProfileBackend
-        .createParentProfile("Alice", "Bob")
-        .createPaymentMethod(1, "Credit Card", false, createdAt)
-        .createPaymentMethod(1, "Debit Card", true, createdAt)
-        .setActivePaymentMethod(1, 1)
-        .paymentMethods(1))
-      .toContainEqual({ id: 1, parentId: 1, method: "Credit Card", isActive: true, createdAt: createdAt })
+    it("When setting a payment method active, it should deactivate the current active one and activate the new one", () => {
+      const createdAt = sqlFormattedDate(new Date());
+      const versionIdOne = Math.floor(Math.random() * 1000000000);
+      const versionIdTwo = Math.floor(Math.random() * 1000000000);
+      const versionIdThree = Math.floor(Math.random() * 1000000000);
+      expect(
+        parentProfileBackend
+          .createParentProfile("Alice", "Bob")
+          .createPaymentMethod(1, "Credit Card", false, createdAt, versionIdOne) 
+          .createPaymentMethod(1, "Debit Card", true, createdAt, versionIdTwo)   
+          .setActivePaymentMethod(1, 1, versionIdThree)  
+          .paymentMethods(1)
+      ).toContainEqual({
+        objectId: 1,
+        parentId: 1,
+        method: "Credit Card",
+        isActive: true, 
+        createdAt: createdAt,
+        auditStatus: "current",
+        versionId: versionIdThree, 
+        createdBy: 1,
+        deletedAt: null,
+      });
     });
 
-    it("When a payment method is added, we should be able to get it by id, so what we can show the newly added payment method", () => {
+    it("When a payment method is added, we should be able to get it by objectId, so what we can show the newly added payment method", () => {
       const createdAt =  sqlFormattedDate(new Date());
-      expect(parentProfileBackend
-        .createParentProfile("Alice", "Bob")
-        .createParentProfile("Charlie", "David")
-        .createPaymentMethod(2, "Credit Card", true,createdAt)
-        .paymentMethod(1))
-      .toEqual({ id: 1, parentId: 2, method: "Credit Card", isActive: true, createdAt: createdAt })
+      const versionId = Math.floor(Math.random() * 1000000000);
+  
+      expect(
+        parentProfileBackend
+          .createParentProfile("Alice", "Bob")
+          .createParentProfile("Charlie", "David")
+          .createPaymentMethod(2, "Credit Card", true, createdAt, versionId)
+          .paymentMethod(1)
+      ).toEqual({
+        objectId: 1,
+        parentId: 2,
+        method: "Credit Card",
+        isActive: true,
+        createdAt: createdAt,
+        auditStatus: "current",
+        versionId: versionId,
+        createdBy: 2,
+        deletedAt: null,
+      });
     });
   });
 });
