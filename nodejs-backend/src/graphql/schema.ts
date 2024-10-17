@@ -18,7 +18,6 @@ export const typeDefs = gql`
     createdAt: String!
     createdBy: Int!
     deletedAt: String
-    auditStatus: String!
   }
 
   type Invoice {

@@ -7,8 +7,8 @@ export class ProfileRepository {
     paymentMethod: PaymentMethod
   ): Promise<PaymentMethod> {
     const sql = `
-    INSERT INTO payment_methods (object_id, parent_id, method, is_active, created_at, version_id, audit_status, created_by, deleted_at)
-    VALUES (?, ?, ?, ?, ?, ?, "current", ?, ?)
+    INSERT INTO payment_methods (object_id, parent_id, method, is_active, created_at, version_id, created_by, deleted_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
     const [result] = await db.execute<mysql.ResultSetHeader>(sql, [
@@ -19,20 +19,11 @@ export class ProfileRepository {
       paymentMethod.createdAt,
       paymentMethod.versionId,
       paymentMethod.createdBy,
-      paymentMethod.deletedAt
+      paymentMethod.deletedAt,
     ]);
 
     const insertId = result.insertId;
     return { ...paymentMethod, objectId: insertId };
-  }
-
-  async archivePaymentMethodVersion(objectId: number): Promise<void> {
-    const archiveSql = `
-      UPDATE payment_methods
-      SET audit_status = 'archived'
-      WHERE object_id = ? AND audit_status = 'current';
-    `;
-    await db.execute<mysql.ResultSetHeader>(archiveSql, [objectId]);
   }
 
   async retrieveCurrentPaymentMethods(
@@ -41,10 +32,19 @@ export class ProfileRepository {
     var options = { year: "numeric", month: "long", day: "numeric" };
 
     const sql = `
-    SELECT * FROM payment_methods 
-    WHERE parent_id = ? AND audit_status = 'current' AND deleted_at IS NULL
+    SELECT pm.*
+    FROM payment_methods pm
+    INNER JOIN (
+      SELECT object_id, MAX(created_at) AS latest_created_at
+      FROM payment_methods
+      WHERE parent_id = ?
+      GROUP BY object_id
+    ) latest_pm ON pm.object_id = latest_pm.object_id AND pm.created_at = latest_pm.latest_created_at
+    WHERE pm.parent_id = ? AND pm.deleted_at IS NULL
   `;
-    const results = await query(sql, [parentId]);
+
+    const results = await query(sql, [parentId, parentId]);
+
     return results.map((r) => ({
       objectId: r.object_id,
       versionId: r.version_id,
@@ -53,7 +53,6 @@ export class ProfileRepository {
       isActive: r.is_active,
       createdAt: r.created_at.toLocaleString("en-US", options),
       createdBy: r.created_by,
-      auditStatus: r.audit_status,
       deletedAt: r.deleted_at,
     }));
   }

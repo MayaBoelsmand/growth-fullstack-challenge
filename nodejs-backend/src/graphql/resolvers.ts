@@ -45,13 +45,14 @@ export const resolvers = {
         isActive: false,
         createdAt: createdAt,
         createdBy: parentId,
-        auditStatus: "current",
         deletedAt: null,
       };
 
       const paymentMethod = await profileRepository.insertPaymentMethodVersion(
         paymentMethodInput
       );
+
+      
       return new ParentProfileBackend([], [], [paymentMethod]).paymentMethod(
         paymentMethod.objectId
       );
@@ -68,7 +69,7 @@ export const resolvers = {
       );
 
       if (currentActiveMethod) {
-        await archiveAndInsertUpdatedVersion(currentActiveMethod, false, false);
+        await insertUpdatedVersion(currentActiveMethod, false, false);
       }
 
       const targetMethod = currentPaymentMethods.find(
@@ -79,7 +80,7 @@ export const resolvers = {
         throw new Error("Target payment method not found.");
       }
 
-      await archiveAndInsertUpdatedVersion(targetMethod, false, true);
+      await insertUpdatedVersion(targetMethod, false, true);
 
       return targetMethod;
     },
@@ -98,7 +99,7 @@ export const resolvers = {
         throw new Error("Payment method not found.");
       }
 
-      await archiveAndInsertUpdatedVersion(targetMethod, true);
+      await insertUpdatedVersion(targetMethod, true);
 
       return true;
     },
@@ -106,21 +107,18 @@ export const resolvers = {
 };
 
 // MARK: - Helper functions
-async function archiveAndInsertUpdatedVersion(
+async function insertUpdatedVersion(
   paymentMethod: PaymentMethod,
   shouldBeDeleted: boolean,
   isActive?: boolean
 ) {
   const now = sqlFormattedDate(new Date());
 
-  await profileRepository.archivePaymentMethodVersion(paymentMethod.objectId);
-
   const updatedPaymentMethod: PaymentMethod = {
     ...paymentMethod,
     versionId: generateNewVersionId(),
     isActive: isActive ?? paymentMethod.isActive,
     createdAt: now,
-    auditStatus: "current",
     deletedAt: shouldBeDeleted ? now : null,
   };
 

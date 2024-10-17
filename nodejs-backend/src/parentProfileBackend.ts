@@ -15,7 +15,6 @@ export interface PaymentMethod {
   createdAt: string;
   createdBy: number;
   deletedAt?: string | null;
-  auditStatus: "current" | "archived";
 }
   
 export  interface Invoice {
@@ -75,7 +74,6 @@ export class ParentProfileBackend {
           isActive,
           createdAt,
           createdBy: parentId,
-          auditStatus: "current",
           deletedAt: null,
         };
       
@@ -93,12 +91,10 @@ export class ParentProfileBackend {
           this.allPaymentMethods.map((paymentMethod) => {
             if (
               paymentMethod.parentId === parentId &&
-              paymentMethod.objectId === paymentMethodId &&
-              paymentMethod.auditStatus === "current"
+              paymentMethod.objectId === paymentMethodId
             ) {
               return {
                 ...paymentMethod,
-                auditStatus: "current",
                 deletedAt: sqlFormattedDate(new Date()), 
               };
             }
