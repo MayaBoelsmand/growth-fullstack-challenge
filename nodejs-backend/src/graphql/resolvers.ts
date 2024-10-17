@@ -2,6 +2,7 @@ import { GraphQLLong } from "graphql-scalars";
 import { ProfileRepository } from "../repository/profileRepository";
 import { ParentProfileBackend, PaymentMethod } from "../parentProfileBackend";
 import sqlFormattedDate from "../utils/dates/SQLFormattedDate";
+import generateNewVersionId from "../utils/ids/GenerateVersionId";
 
 const profileRepository = new ProfileRepository();
 
@@ -52,7 +53,7 @@ export const resolvers = {
         paymentMethodInput
       );
 
-      
+
       return new ParentProfileBackend([], [], [paymentMethod]).paymentMethod(
         paymentMethod.objectId
       );
@@ -125,6 +126,3 @@ async function insertUpdatedVersion(
   await profileRepository.insertPaymentMethodVersion(updatedPaymentMethod);
 }
 
-function generateNewVersionId() {
-  return Math.floor(Math.random() * 1000000000);
-}

@@ -1,5 +1,6 @@
 import { ParentProfileBackend } from "../parentProfileBackend";
 import sqlFormattedDate from "../utils/dates/SQLFormattedDate";
+import generateNewVersionId from "../utils/ids/GenerateVersionId";
 
 describe("Parent profile backend", () => {
   const parentProfileBackend = new ParentProfileBackend([], [], [])
@@ -57,7 +58,7 @@ describe("Parent profile backend", () => {
 
     it("When the first payment method is created, it should be there with the objectId of 1, because the objectIds are incremented every time a payment method is created", () => {
       const createdAt =  sqlFormattedDate(new Date());
-      const versionId = Math.floor(Math.random() * 1000000000);
+      const versionId = generateNewVersionId()
   
       expect(
         parentProfileBackend
@@ -79,8 +80,8 @@ describe("Parent profile backend", () => {
 
     it("When a payment method is created, and there is already one, the new one should have an objectId of 2", () => {
       const createdAt = sqlFormattedDate(new Date());
-      const versionIdOne = Math.floor(Math.random() * 1000000000);
-      const versionIdTwo = Math.floor(Math.random() * 1000000000);
+      const versionIdOne = generateNewVersionId()
+      const versionIdTwo = generateNewVersionId()
   
       expect(
         parentProfileBackend
@@ -102,7 +103,7 @@ describe("Parent profile backend", () => {
 
     it("When a payment method is deleted, it should be archived (soft deleted), not permanently removed", () => {
       const createdAt = sqlFormattedDate(new Date());
-      const versionId = Math.floor(Math.random() * 1000000000);
+      const versionId = generateNewVersionId()
   
       expect(
         parentProfileBackend
@@ -124,9 +125,9 @@ describe("Parent profile backend", () => {
 
     it("When setting a payment method active, it should deactivate the current active one and activate the new one", () => {
       const createdAt = sqlFormattedDate(new Date());
-      const versionIdOne = Math.floor(Math.random() * 1000000000);
-      const versionIdTwo = Math.floor(Math.random() * 1000000000);
-      const versionIdThree = Math.floor(Math.random() * 1000000000);
+      const versionIdOne = generateNewVersionId()
+      const versionIdTwo = generateNewVersionId()
+      const versionIdThree = generateNewVersionId()
       expect(
         parentProfileBackend
           .createParentProfile("Alice", "Bob")
@@ -148,7 +149,7 @@ describe("Parent profile backend", () => {
 
     it("When a payment method is added, we should be able to get it by objectId, so what we can show the newly added payment method", () => {
       const createdAt =  sqlFormattedDate(new Date());
-      const versionId = Math.floor(Math.random() * 1000000000);
+      const versionId = generateNewVersionId()
   
       expect(
         parentProfileBackend
